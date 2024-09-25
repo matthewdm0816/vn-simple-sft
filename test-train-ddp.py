@@ -149,7 +149,7 @@ def main():
 
     # Set up the training arguments
     num_train_epochs = 3
-    per_device_train_batch_size = 8
+    per_device_train_batch_size = 4
     per_device_eval_batch_size = per_device_train_batch_size
     training_args = TrainingArguments(
         output_dir=f"./shinku_{model_name_short}_lora",
@@ -158,12 +158,12 @@ def main():
         per_device_eval_batch_size=per_device_eval_batch_size,
         gradient_accumulation_steps=4,
         warmup_steps=100,
-        learning_rate=3e-5,
+        learning_rate=1e-5,
         bf16=True,
         logging_steps=10,
         save_strategy="steps",
         eval_strategy="steps",
-        eval_steps=0.5,
+        eval_steps=0.5 // num_train_epochs,
         weight_decay=0,
         dataloader_num_workers=4,
         # Add DDP-specific arguments
