@@ -77,13 +77,13 @@ class ChatDataset(Dataset):
         }
 
 
-model_name = "../Qwen2.5-1.5B-Instruct"
+model_name = "../Qwen2.5-7B-Instruct"
 model_name_short = model_name.split("/")[-1]
 
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 dataset = {
-    "train": ChatDataset("data/iroseka_dataset.jsonl", tokenizer, max_length=1200),
-    "validation": ChatDataset("data/iroseka_validations.jsonl", tokenizer, max_length=1200),
+    "train": ChatDataset("data/iroseka_dataset.jsonl", tokenizer, max_length=768),
+    "validation": ChatDataset("data/iroseka_validations.jsonl", tokenizer, max_length=768),
 }
 print(dataset["train"][0].get("text", ""))
 dataset["train"].stat_length()
@@ -95,7 +95,7 @@ model = AutoModelForCausalLM.from_pretrained(
     model_name,
     load_in_8bit=False,
     torch_dtype=torch.bfloat16,
-    device_map="cuda:0",
+    device_map="cpu",
 )
 
 # Prepare the model for k-bit training
@@ -121,7 +121,8 @@ num_train_epochs = 3
 training_args = TrainingArguments(
     output_dir=f"./shinku_{model_name_short}_lora",
     num_train_epochs=num_train_epochs,
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=1,
+    per_device_eval_batch_size=1,
     gradient_accumulation_steps=4,
     warmup_steps=100,
     learning_rate=3e-5,

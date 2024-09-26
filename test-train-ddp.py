@@ -18,84 +18,7 @@ import json
 from torch.utils.data import Dataset, DistributedSampler
 from transformers import AutoTokenizer
 
-def format_number(num):
-    if num < 1000:
-        return str(num)
-    elif num < 1000000:
-        return f"{num/1000:.1f}K".rstrip('0').rstrip('.')
-    elif num < 1000000000:
-        return f"{num/1000000:.1f}M".rstrip('0').rstrip('.')
-    else:
-        return f"{num/1000000000:.1f}B".rstrip('0').rstrip('.')
-
-class ChatDataset(Dataset):
-    def __init__(self, file_path, tokenizer, max_length=1024):
-        self.data = []
-        self.tokenizer = tokenizer
-        self.max_length = max_length
-        self.include_text = True
-        
-        with open(file_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                item = json.loads(line)
-                self.data.append(item['messages'])
-
-    def stat_length(self):
-        all_tokens = 0
-        for data in self:
-            all_tokens += len(data['input_ids'])
-
-        print(f"Total samples {format_number(len(self))}")
-        print(f"Total tokens {format_number(all_tokens)}")
-
-    def __len__(self):
-        return len(self.data)
-    
-    def _get_text(self, messages):
-        # Apply chat template
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=False,
-        )
-        return text
-
-    def __getitem__(self, idx):
-        messages = self.data[idx]
-        
-        # Apply chat template
-        text = self._get_text(messages)
-        
-        # Tokenize and truncate
-        # encoded = self.tokenizer.encode_plus(
-        #     text,
-        #     max_length=self.max_length,
-        #     padding=False,
-        #     truncation=True,
-        #     return_tensors="pt"
-        # )
-        encoded = self.tokenizer(
-            text,
-            max_length=self.max_length,
-            padding=False,
-            truncation=True,
-            return_tensors="pt"
-        )
-        encoded["input_ids"] = encoded["input_ids"].squeeze()
-        encoded["attention_mask"] = encoded["attention_mask"].squeeze()
-
-        setattr(encoded, "text", text)
-        return encoded
-    
-        # return_dict = {
-        #     "input_ids": encoded["input_ids"].squeeze(),
-        #     "attention_mask": encoded["attention_mask"].squeeze()
-        # }
-
-        # if self.include_text:
-        #     return_dict["text"] = text
-        
-        # return return_dict
+from dataset import format_number, ChatDataset
     
 
 def main():
@@ -106,13 +29,13 @@ def main():
     rank = dist.get_rank()
     world_size = dist.get_world_size()
 
-    model_name = "../Qwen2.5-1.5B-Instruct"
+    model_name = "../Qwen2.5-7B-Instruct"
     model_name_short = model_name.split("/")[-1]
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     dataset = {
-        "train": ChatDataset("data/iroseka_dataset.jsonl", tokenizer, max_length=1500),
-        "validation": ChatDataset("data/iroseka_validations.jsonl", tokenizer, max_length=1500),
+        "train": ChatDataset("data/iroseka_dataset.jsonl", tokenizer, max_length=768, ratio=1),
+        "validation": ChatDataset("data/iroseka_validations.jsonl", tokenizer, max_length=768),
     }
 
     if rank == 0:
@@ -149,7 +72,7 @@ def main():
 
     # Set up the training arguments
     num_train_epochs = 3
-    per_device_train_batch_size = 4
+    per_device_train_batch_size = 1
     per_device_eval_batch_size = per_device_train_batch_size
     training_args = TrainingArguments(
         output_dir=f"./shinku_{model_name_short}_lora",
@@ -161,11 +84,13 @@ def main():
         learning_rate=1e-5,
         bf16=True,
         logging_steps=10,
-        save_strategy="steps",
-        eval_strategy="steps",
-        eval_steps=0.5 // num_train_epochs,
+        # save_strategy="steps",
+        # eval_strategy="steps",
+        # eval_steps=0.5 // num_train_epochs,
+        save_strategy="epoch",
+        eval_strategy="epoch",
         weight_decay=0,
-        dataloader_num_workers=4,
+        dataloader_num_workers=0,
         # Add DDP-specific arguments
         local_rank=int(os.environ["LOCAL_RANK"]),
         ddp_backend="nccl",
