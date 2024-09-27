@@ -1,6 +1,7 @@
 import os
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 os.environ["MACA_LAUNCH_BLOCKING"] = "1"
+os.environ["OMP_NUM_THREADS"] = "4"
 import torch
 import torch.distributed as dist
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -24,15 +25,15 @@ from dataset import format_number, ChatDataset
 def main():
     parser = argparse.ArgumentParser(description="Fine-tune a language model using DDP")
     # llama3.1-8b-instruct
-    parser.add_argument("--model_name", type=str, default="../Qwen2.5-7B-Instruct", help="Path to the pre-trained model")
+    parser.add_argument("--model_name", type=str, default="../Qwen2.5-14B-Instruct", help="Path to the pre-trained model")
     parser.add_argument("--train_file", type=str, default="data/iroseka_dataset.jsonl", help="Path to the training data file")
     parser.add_argument("--val_file", type=str, default="data/iroseka_validations.jsonl", help="Path to the validation data file")
     parser.add_argument("--output_dir", type=str, default="./shinku_lora", help="Output directory for saving the model")
     parser.add_argument("--max_length", type=int, default=768, help="Maximum sequence length")
     parser.add_argument("--num_train_epochs", type=int, default=3, help="Number of training epochs")
     parser.add_argument("--per_device_train_batch_size", type=int, default=1, help="Batch size per device for training")
-    parser.add_argument("--gradient_accumulation_steps", type=int, default=4, help="Number of gradient accumulation steps")
-    parser.add_argument("--learning_rate", type=float, default=1e-5, help="Learning rate")
+    parser.add_argument("--gradient_accumulation_steps", type=int, default=8, help="Number of gradient accumulation steps")
+    parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate")
     parser.add_argument("--lora_r", type=int, default=32, help="LoRA r parameter")
     parser.add_argument("--lora_alpha", type=int, default=64, help="LoRA alpha parameter")
     parser.add_argument("--lora_dropout", type=float, default=0.1, help="LoRA dropout rate")
@@ -105,7 +106,8 @@ def main():
         save_strategy="epoch",
         eval_strategy="epoch",
         weight_decay=0,
-        dataloader_num_workers=0,
+        dataloader_num_workers=4,
+        # gradient_checkpointing=True,
         # Add DDP-specific arguments
         local_rank=int(os.environ["LOCAL_RANK"]),
         ddp_backend=args.mp_backend,

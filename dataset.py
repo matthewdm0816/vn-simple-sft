@@ -79,7 +79,8 @@ class ChatDataset(Dataset):
             text,
             max_length=self.max_length,
             # padding=False,
-            padding="max_length",
+            # padding="max_length",
+            padding=False,
             # padding=False,
             truncation=True,
             return_tensors="pt"
