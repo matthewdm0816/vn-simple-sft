@@ -5,8 +5,8 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser(description="Run inference with a fine-tuned language model")
-    parser.add_argument("--base_model", type=str, default="../Qwen2.5-14B-Instruct", help="Path to the base model")
-    parser.add_argument("--peft_model", type=str, default="shinku_lora_Qwen2.5-14B-Instruct/checkpoint-1992", help="Path to the PEFT (LoRA) model")
+    parser.add_argument("--base_model", type=str, default="../Qwen2.5-1.5B-Instruct", help="Path to the base model")
+    parser.add_argument("--peft_model", type=str, default="shinku_Qwen2.5-1.5B-Instruct_lora/checkpoint-331", help="Path to the PEFT (LoRA) model")
     parser.add_argument("--prompt", type=str, default="悠馬: 晩ごはん、何食べるかしら。真紅はどう思う？", help="Input prompt for generation")
     parser.add_argument("--max_length", type=int, default=300, help="Maximum length of generated text")
     args = parser.parse_args()
